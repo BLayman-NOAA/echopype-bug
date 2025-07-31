@@ -37,6 +37,16 @@ The calibration fails with the following error:
 ValueError: dimensions ('channel',) must have the same length as the number of data dimensions, ndim=2
 ```
 
+## Reproduction Steps
+You can reproduce this bug by running the provided `echopype-bug.ipynb` notebook, or by following these manual steps:
+
+1. Load the raw EK80 file: `ed = ep.open_raw(raw_path, sonar_model="EK80")`
+2. Convert to netCDF: `ed.to_netcdf(save_path=output_path)`
+3. Reopen the netCDF file: `echodata = ep.open_converted(output_path)`
+4. Attempt calibration: `ds_Sv = ep.calibrate.compute_Sv(echodata, waveform_mode="CW", encode_mode="complex")`
+5. Observe the ValueError
+
+
 ### Full Stack Trace
 ```
 ValueError                                Traceback (most recent call last)
@@ -87,16 +97,6 @@ The test file used to reproduce this bug is:
 - **Ship**: Reuben Lasker
 - **Survey**: RL2107
 - **Date**: August 13, 2021
-
-## Reproduction Steps
-You can reproduce this bug by running the provided `echopype-bug.ipynb` notebook, or by following these manual steps:
-
-1. Load the raw EK80 file: `ed = ep.open_raw(raw_path, sonar_model="EK80")`
-2. Convert to netCDF: `ed.to_netcdf(save_path=output_path)`
-3. Reopen the netCDF file: `echodata = ep.open_converted(output_path)`
-4. Attempt calibration: `ds_Sv = ep.calibrate.compute_Sv(echodata, waveform_mode="CW", encode_mode="complex")`
-5. Observe the ValueError
-
 
 ## Environment
 - **echopype version**: 0.10.1
