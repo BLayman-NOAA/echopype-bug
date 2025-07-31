@@ -1,0 +1,122 @@
+ValueError                                Traceback (most recent call last)
+Cell In[6], line 2
+      1 # Convert echo data from open_converted to sv
+----> 2 ds_Sv = ep.calibrate.compute_Sv(echodata, waveform_mode="CW", encode_mode="complex") 
+      4 #ds_Sv.to_netcdf(sv_output_folder / (raw_path.stem + "_2.nc"))  # save data to netCDF format
+
+    122 def compute_Sv(echodata: EchoData, **kwargs) -> xr.Dataset:
+    123     """
+    124     Compute volume backscattering strength (Sv) from raw data.
+    125 
+   (...)    206     it must be set using `EchoData.update_platform()`.
+    207     """
+--> 208     return _compute_cal(cal_type="Sv", echodata=echodata, **kwargs)
+
+File echopype\calibrate\api.py:66, in _compute_cal(cal_type, echodata, env_params, cal_params, ecs_file, waveform_mode, encode_mode)
+     64 # Perform calibration
+     65 if cal_type == "Sv":
+---> 66     cal_ds = cal_obj.compute_Sv()
+     67 elif cal_type == "TS":
+     68     cal_ds = cal_obj.compute_TS()
+
+File echopype\calibrate\calibrate_ek.py:630, in CalibrateEK80.compute_Sv(self)
+    621 def compute_Sv(self):
+    622     """Compute volume backscattering strength (Sv).
+    623 
+    624     Returns
+   (...)    628         and the corresponding range (``echo_range``) in units meter.
+    629     """
+--> 630     return self._compute_cal(cal_type="Sv")
+
+File echopype\calibrate\calibrate_ek.py:614, in CalibrateEK80._compute_cal(self, cal_type)
+    608 flag_complex = (
+    609     True if self.waveform_mode == "BB" or self.encode_mode == "complex" else False
+    610 )
+    612 if flag_complex:
+    613     # Complex samples can be BB or CW
+--> 614     ds_cal = self._cal_complex_samples(cal_type=cal_type)
+    615 else:
+    616     # Power samples only make sense for CW mode data
+    617     ds_cal = self._cal_power_samples(cal_type=cal_type)
+
+File echopype\calibrate\calibrate_ek.py:548, in CalibrateEK80._cal_complex_samples(self, cal_type)
+    544 # Use pulse_duration in place of tau_effective for GPT channels
+    545 # TODO: below assumes that all transmit parameters are identical
+    546 # and needs to be changed when allowing transmit parameters to vary by ping
+    547 ch_GPT = (vend["transceiver_type"] == "GPT").compute()
+--> 548 tau_effective[ch_GPT] = beam["transmit_duration_nominal"][ch_GPT].isel(ping_time=0)
+    550 # equivalent_beam_angle
+    551 # TODO: THIS ONE CARRIES THE BEAM DIMENSION AROUND
+    552 psifc = self.cal_params["equivalent_beam_angle"]
+
+File xarray\core\dataarray.py:905, in DataArray.__setitem__(self, key, value)
+    900 # DataArray key -> Variable key
+    901 key = {
+    902     k: v.variable if isinstance(v, DataArray) else v
+    903     for k, v in self._item_key_to_dict(key).items()
+    904 }
+--> 905 self.variable[key] = value
+
+File xarray\core\variable.py:866, in Variable.__setitem__(self, key, value)
+    864         value = Variable(dims[-value.ndim :], value)
+    865 # broadcast to become assignable
+--> 866 value = value.set_dims(dims).data
+    868 if new_order:
+    869     value = duck_array_ops.asarray(value)
+
+File xarray\util\deprecation_helpers.py:143, in deprecate_dims.<locals>.wrapper(*args, **kwargs)
+    135     emit_user_level_warning(
+    136         f"The `{old_name}` argument has been renamed to `dim`, and will be removed "
+    137         "in the future. This renaming is taking place throughout xarray over the "
+   (...)    140         PendingDeprecationWarning,
+    141     )
+    142     kwargs["dim"] = kwargs.pop(old_name)
+--> 143 return func(*args, **kwargs)
+
+File xarray\core\variable.py:1401, in Variable.set_dims(self, dim, shape)
+   1398     tmp_shape = tuple(dims_map[d] for d in expanded_dims)
+   1399     expanded_data = duck_array_ops.broadcast_to(self._data, tmp_shape)
+-> 1401 expanded_var = Variable(
+   1402     expanded_dims, expanded_data, self._attrs, self._encoding, fastpath=True
+   1403 )
+   1404 return expanded_var.transpose(*dim)
+
+File xarray\core\variable.py:378, in Variable.__init__(self, dims, data, attrs, encoding, fastpath)
+    350 def __init__(
+    351     self,
+    352     dims,
+   (...)    356     fastpath=False,
+    357 ):
+    358     """
+    359     Parameters
+    360     ----------
+   (...)    376         unrecognized encoding items.
+    377     """
+--> 378     super().__init__(
+    379         dims=dims, data=as_compatible_data(data, fastpath=fastpath), attrs=attrs
+    380     )
+    382     self._encoding = None
+    383     if encoding is not None:
+
+File xarray\namedarray\core.py:261, in NamedArray.__init__(self, dims, data, attrs)
+    254 def __init__(
+    255     self,
+    256     dims: _DimsLike,
+    257     data: duckarray[Any, _DType_co],
+    258     attrs: _AttrsLike = None,
+    259 ):
+    260     self._data = data
+--> 261     self._dims = self._parse_dimensions(dims)
+    262     self._attrs = dict(attrs) if attrs else None
+
+File xarray\namedarray\core.py:505, in NamedArray._parse_dimensions(self, dims)
+    503 dims = (dims,) if isinstance(dims, str) else tuple(dims)
+    504 if len(dims) != self.ndim:
+--> 505     raise ValueError(
+    506         f"dimensions {dims} must have the same length as the "
+    507         f"number of data dimensions, ndim={self.ndim}"
+    508     )
+    509 if len(set(dims)) < len(dims):
+    510     repeated_dims = {d for d in dims if dims.count(d) > 1}
+
+ValueError: dimensions ('channel',) must have the same length as the number of data dimensions, ndim=2
